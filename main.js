@@ -25,7 +25,7 @@ con.connect().then(()=>{
 
 
 app.use(session({
-    secrete:"cookie",
+    secret:"cookie",
     resave:false,
     saveUninitialized:false
 }))
@@ -34,7 +34,7 @@ app.use(passport.session())
 
 
 app.get("/",(req,res)=>{
-    render("index")
+    res.render("index")
 })
 
 app.get("/sign-up",(req,res)=>{
@@ -45,18 +45,35 @@ app.post("/sign-up",async(req,res,next)=>{
 const {username,password}=req.body
 try{
 console.log("inserting user...")
-await con.query(`INSERT INTO users(username,password)VALUES($1,$2),`,[username,password])
+await con.query(`INSERT INTO users(username,password)VALUES($1,$2)`,[username,password])
 console.log("inserted Succesfully")
 res.redirect("/")
 }catch(e){
-return next(error)
+return next(e)
 }
 
 
 })
 
+passport.use(localhost(async(username,password,done)=>{
+try{
+const {rows}=await con.query(`SELECT * FROM users WHERE username=$1`,[username])
+const user=rows[0]
+if(!user){
+    return done(null,false,{error:"Incorrect Username"})
+}
+if(user.password !== password){
+    return done(null,false,{error:"Incorrect Password"})
+}
+return done(null,user)
+}catch(error){
+return done(error)
+}
 
-CONST PORT=process.env.PORT || 3000
-app.listen(PORT,()=>{
-    console.log(`Server is running on port ${PORT}`)
+}))
+
+
+const port=process.env.PORT || 3000
+app.listen(port,()=>{
+    console.log(`Server is running on port ${port}`)
 })  
