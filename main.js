@@ -5,6 +5,8 @@ const passport = require("passport")
 const session = require("express-session")
 const app = express()
 require("dotenv").config()
+const localStrategy=require("passport-local").Strategy
+const bcrypt=require("bcryptjs")
 
 
 app.set("views",path.join(__dirname,"views"))
@@ -29,12 +31,12 @@ app.use(session({
     resave:false,
     saveUninitialized:false
 }))
-
+app.use(passport.initialize())
 app.use(passport.session())
 
 
 app.get("/",(req,res)=>{
-    res.render("index")
+   res.render("index", { user: req.user });
 })
 
 app.get("/sign-up",(req,res)=>{
@@ -45,7 +47,8 @@ app.post("/sign-up",async(req,res,next)=>{
 const {username,password}=req.body
 try{
 console.log("inserting user...")
-await con.query(`INSERT INTO users(username,password)VALUES($1,$2)`,[username,password])
+const hashedPassword=await bcrypt.hash(password,10)
+await con.query(`INSERT INTO users(username,password)VALUES($1,$2)`,[username,hashedPassword])
 console.log("inserted Succesfully")
 res.redirect("/")
 }catch(e){
@@ -55,14 +58,17 @@ return next(e)
 
 })
 
-passport.use(localhost(async(username,password,done)=>{
+passport.use(new localStrategy(async(username,password,done)=>{
 try{
 const {rows}=await con.query(`SELECT * FROM users WHERE username=$1`,[username])
 const user=rows[0]
+
 if(!user){
     return done(null,false,{error:"Incorrect Username"})
 }
-if(user.password !== password){
+
+const match=await bcrypt.compare(password,user.password)
+if(!match){
     return done(null,false,{error:"Incorrect Password"})
 }
 return done(null,user)
@@ -73,7 +79,48 @@ return done(error)
 }))
 
 
+passport.serializeUser((user,done)=>{
+    return done(null,user.id)
+})
+
+passport.deserializeUser(async(id,done)=>{
+    try{
+        console.log("fetching User To deserialise ")
+        const {rows}=await con.query(`SELECT * FROM users WHERE id=$1`,[id])
+        const user=rows[0]
+        done(null,user)
+    }catch(error){
+        done(error)
+    }
+})
+
+
+app.post("/log-in",passport.authenticate("local", {
+    successRedirect: "/",
+    failureRedirect: "/",
+    failureMessage: true,
+  }))
+
+
+
+
+
+app.get("/log-out",(req,res,next)=>{
+    req.logout((err)=>{
+        if(err){
+            next(err)
+        }
+        res.redirect("/")
+    })
+})
+
+
+
+
 const port=process.env.PORT || 3000
 app.listen(port,()=>{
     console.log(`Server is running on port ${port}`)
 })  
+
+
+
