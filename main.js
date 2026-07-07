@@ -1,13 +1,9 @@
-const express=require("express")
-const path=require("node:path")
-const {Pool}=require("pg")
-const passport=require("passport")
-const session=require("express-session")
-const { appendFile } = require("node:fs")
-const { render } = require("ejs")
-const { error } = require("node:console")
-const localStrategy=require("passport-local").Strategy
-const app=express()
+const express = require("express")
+const path = require("node:path")
+const { Pool } = require("pg")
+const passport = require("passport")
+const session = require("express-session")
+const app = express()
 require("dotenv").config()
 
 
@@ -58,3 +54,9 @@ return next(error)
 
 
 })
+
+
+CONST PORT=process.env.PORT || 3000
+app.listen(PORT,()=>{
+    console.log(`Server is running on port ${PORT}`)
+})  
